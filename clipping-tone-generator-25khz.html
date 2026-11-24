@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clipping tone generator (0-25 kHz)</title>
+<style>
+:root{--bg:#f3f5f2;--panel:#fff;--ink:#16211b;--mute:#5b6a61;--line:#cfd8d2;--wave:#1f7a5a;--clip:#c4452d;--accent:#1f7a5a;--onacc:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#101613;--panel:#18211c;--ink:#e6efe9;--mute:#93a69a;--line:#2b3a31;--wave:#4fd1a0;--clip:#ff7a5c;--accent:#4fd1a0;--onacc:#062015}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS",Verdana,sans-serif;line-height:1.45}
+main{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.5rem;margin:0 0 4px}
+p.sub{margin:0 0 16px;color:var(--mute)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+canvas{width:100%;height:220px;display:block;border-radius:6px}
+.row{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:600px){.row{grid-template-columns:1fr 1fr}}
+label{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:6px}
+label span{font-weight:normal;color:var(--mute);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=number]{width:110px;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button{font:inherit;padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--onacc);font-weight:bold}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 18px;color:var(--mute)}
+.stats b{color:var(--ink);font-variant-numeric:tabular-nums}
+.warn{color:var(--clip);font-size:.9rem;margin:0 0 8px}
+</style>
+</head>
+<body>
+<main>
+<h1>Clipping tone generator</h1>
+<p class="sub">Sine wave from 0 Hz to 25 kHz with adjustable clipping.</p>
+
+<div class="panel"><canvas id="scope" width="1400" height="440" aria-label="Waveform preview"></canvas></div>
+
+<div class="panel">
+<div class="row">
+<div>
+<label for="freq">Frequency <span id="freqVal"></span></label>
+<input id="freq" type="range" min="0" max="1000" step="1" value="300">
+<div style="margin-top:6px"><input id="freqNum" type="number" min="0" max="25000" step="1" value="45"> Hz</div>
+</div>
+<div>
+<label for="clip">Clipping level <span id="clipVal"></span></label>
+<input id="clip" type="range" min="0" max="100" step="0.1" value="2.3">
+<div style="margin-top:6px"><input id="target" type="number" min="0" max="43" step="0.1" value="1"> % THD</div>
+</div>
+<div>
+<label for="vol">Output volume <span id="volVal"></span></label>
+<input id="vol" type="range" min="0" max="100" step="1" value="10">
+</div>
+</div>
+<div class="btns">
+<button id="play" class="primary">Play</button>
+<button id="p0">0%</button><button id="p1">1%</button><button id="p3">3%</button><button id="p5">5%</button><button id="p10">10%</button><button id="p20">20%</button>
+</div>
+</div>
+
+<div class="panel stats">
+<div>Clip point: <b id="thr">-</b></div>
+<div>Measured THD: <b id="thd">-</b></div>
+<div>Period: <b id="per">-</b></div>
+<div>Sample rate: <b id="sr">-</b></div>
+<div style="grid-column:1/-1">3rd / 5th / 7th harmonic: <b id="harm">-</b></div>
+</div>
+<p class="warn" id="warn"></p>
+<p class="warn">Start with the volume low. Very high frequencies at loud volume can hurt your ears and tweeters, and clipped bass heats up voice coils.</p>
+</main>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var f=$('freq'),fn=$('freqNum'),c=$('clip'),v=$('vol'),t=$('target'),play=$('play'),cv=$('scope'),ctx=cv.getContext('2d');
+var ac=null,osc=null,shaper=null,gain=null,playing=false,hz=45;
+
+function clipFn(x,L){return Math.max(-L,Math.min(L,x))/L}
+function thd(L){
+ var M=1024,i,k,a,b,fund=0,sum=0,s=[];
+ for(i=0;i<M;i++)s.push(clipFn(Math.sin(2*Math.PI*i/M),L));
+ for(k=1;k<=15;k++){a=0;b=0;for(i=0;i<M;i++){a+=s[i]*Math.cos(2*Math.PI*k*i/M);b+=s[i]*Math.sin(2*Math.PI*k*i/M)}
+  var m=Math.sqrt(a*a+b*b)*2/M;if(k==1)fund=m;else sum+=m*m}
+ return 100*Math.sqrt(sum)/fund;
+}
+var table=[];for(var p=0;p<=1000;p++){var L=1-0.9*p/1000;table.push({L:L,d:thd(L)})}
+function levelForThd(d){for(var i=0;i<table.length;i++){if(table[i].d>=d)return table[i].L}return 0.1}
+var curL=1,curD=0;
+
+// log slider: 0 -> 0 Hz, 1..1000 -> 1 Hz..25 kHz
+function sliderToHz(s){s=+s;return s<=0?0:Math.round(Math.pow(25000,(s-1)/999))}
+function hzToSlider(h){return h<=0?0:Math.round(1+999*Math.log(Math.max(h,1))/Math.log(25000))}
+function fmtHz(h){return h>=1000?(h/1000).toFixed(h>=10000?1:2)+' kHz':h+' Hz'}
+function fmtPeriod(h){if(h<=0)return 'DC (no wave)';var p=1/h;return p>=0.001?(p*1000).toFixed(2)+' ms':(p*1e6).toFixed(1)+' µs'}
+
+function makeCurve(L){
+ var n=4096,arr=new Float32Array(n);
+ for(var i=0;i<n;i++){arr[i]=clipFn(i*2/(n-1)-1,L)}
+ return arr;
+}
+function update(src){
+ var d;
+ if(src==='fnum'){hz=Math.max(0,Math.min(25000,parseFloat(fn.value)||0));f.value=hzToSlider(hz)}
+ else if(src==='freq'){hz=sliderToHz(f.value);fn.value=hz}
+ if(src==='target'){d=Math.max(0,Math.min(43,parseFloat(t.value)||0));c.value=d/43*100}
+ else if(src==='clip'){d=c.value/100*43;t.value=d.toFixed(1)}
+ else d=parseFloat(t.value)||0;
+ curD=d;curL=d<=0?1:levelForThd(d);
+ var sr=ac?ac.sampleRate:48000,ny=sr/2;
+ $('freqVal').textContent=fmtHz(hz);
+ $('clipVal').textContent=curD.toFixed(1)+'% THD';
+ $('volVal').textContent=v.value+'%';
+ $('thr').textContent=Math.round(curL*100)+'% of peak';
+ $('thd').textContent=thd(curL).toFixed(1)+'%';
+ $('per').textContent=fmtPeriod(hz);
+ $('sr').textContent=ac?(sr/1000)+' kHz (limit '+(ny/1000)+' kHz)':'set on Play';
+ function h(n){var x=hz*n;return x>ny?'<span style="color:var(--clip)">'+Math.round(x)+' (lost)</span>':Math.round(x)}
+ $('harm').innerHTML=hz?h(3)+' / '+h(5)+' / '+h(7)+' Hz':'-';
+ var w='';
+ if(hz>ny)w='This frequency is above what your audio output can play ('+(ny/1000)+' kHz limit), so it will be silent or folded down.';
+ else if(hz>0&&hz<20)w='Below about 20 Hz is infrasonic: you will feel it more than hear it, and laptop speakers will not play it.';
+ else if(hz>20000)w='Above about 20 kHz most people hear nothing, but your speakers and tweeters still receive the signal.';
+ $('warn').textContent=w;
+ if(osc)osc.frequency.value=hz;
+ if(gain)gain.gain.value=Math.pow(v.value/100,2)*0.9;
+ if(shaper)shaper.curve=makeCurve(curL);
+ draw();
+}
+function draw(){
+ var W=cv.width,H=cv.height,cs=getComputedStyle(document.documentElement);
+ ctx.clearRect(0,0,W,H);
+ ctx.strokeStyle=cs.getPropertyValue('--line');ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+ var amp=H*0.42,x,y,cycles=2;
+ ctx.setLineDash([8,8]);ctx.strokeStyle=cs.getPropertyValue('--clip');ctx.lineWidth=1.5;
+ [curL,-curL].forEach(function(l){ctx.beginPath();ctx.moveTo(0,H/2-l*amp);ctx.lineTo(W,H/2-l*amp);ctx.stroke()});
+ ctx.setLineDash([]);
+ if(hz<=0){return}
+ ctx.strokeStyle=cs.getPropertyValue('--line');ctx.lineWidth=2;ctx.beginPath();
+ for(x=0;x<=W;x++){y=Math.sin(2*Math.PI*cycles*x/W);x?ctx.lineTo(x,H/2-y*amp):ctx.moveTo(x,H/2-y*amp)}ctx.stroke();
+ ctx.strokeStyle=cs.getPropertyValue('--wave');ctx.lineWidth=3.5;ctx.beginPath();
+ for(x=0;x<=W;x++){y=Math.max(-curL,Math.min(curL,Math.sin(2*Math.PI*cycles*x/W)));x?ctx.lineTo(x,H/2-y*amp):ctx.moveTo(x,H/2-y*amp)}ctx.stroke();
+ ctx.fillStyle=cs.getPropertyValue('--mute');ctx.font='22px sans-serif';
+ ctx.fillText('2 cycles = '+(hz?(2/hz>=0.001?(2000/hz).toFixed(2)+' ms':(2e6/hz).toFixed(1)+' µs'):''),12,28);
+}
+function start(){
+ if(!ac){
+  try{ac=new (window.AudioContext||window.webkitAudioContext)({sampleRate:96000})}
+  catch(e){ac=new (window.AudioContext||window.webkitAudioContext)()}
+ }
+ if(ac.state==='suspended')ac.resume();
+ osc=ac.createOscillator();osc.type='sine';osc.frequency.value=hz;
+ shaper=ac.createWaveShaper();shaper.curve=makeCurve(curL);shaper.oversample='4x';
+ gain=ac.createGain();gain.gain.value=0;
+ osc.connect(shaper);shaper.connect(gain);gain.connect(ac.destination);
+ osc.start();
+ gain.gain.setTargetAtTime(Math.pow(v.value/100,2)*0.9,ac.currentTime,0.05);
+ playing=true;play.textContent='Stop';update();
+}
+function stop(){
+ if(!osc)return;
+ var o=osc,g=gain;g.gain.setTargetAtTime(0,ac.currentTime,0.03);
+ setTimeout(function(){try{o.stop();o.disconnect()}catch(e){}},150);
+ osc=null;shaper=null;gain=null;playing=false;play.textContent='Play';
+}
+play.addEventListener('click',function(){playing?stop():start()});
+f.addEventListener('input',function(){update('freq')});
+fn.addEventListener('input',function(){update('fnum')});
+c.addEventListener('input',function(){update('clip')});
+t.addEventListener('input',function(){update('target')});
+v.addEventListener('input',function(){update()});
+[['p0',0],['p1',1],['p3',3],['p5',5],['p10',10],['p20',20]].forEach(function(p){
+ $(p[0]).addEventListener('click',function(){t.value=p[1];update('target')});
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+f.value=hzToSlider(45);update('target');
+})();
+</script>
+</body>
+</html>
