@@ -1,180 +1,539 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
 <meta charset="utf-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Clipping tone generator (0-25 kHz)</title>
+
+<meta name="theme-color" content="#101713">
+
+<title>Audio Signal Workbench</title>
+
 <style>
-:root{--bg:#f3f5f2;--panel:#fff;--ink:#16211b;--mute:#5b6a61;--line:#cfd8d2;--wave:#1f7a5a;--clip:#c4452d;--accent:#1f7a5a;--onacc:#fff}
-@media (prefers-color-scheme:dark){:root{--bg:#101613;--panel:#18211c;--ink:#e6efe9;--mute:#93a69a;--line:#2b3a31;--wave:#4fd1a0;--clip:#ff7a5c;--accent:#4fd1a0;--onacc:#062015}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS",Verdana,sans-serif;line-height:1.45}
-main{max-width:720px;margin:0 auto;padding:20px 16px 40px}
-h1{font-size:1.5rem;margin:0 0 4px}
-p.sub{margin:0 0 16px;color:var(--mute)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
-canvas{width:100%;height:220px;display:block;border-radius:6px}
-.row{display:grid;grid-template-columns:1fr;gap:14px}
-@media(min-width:600px){.row{grid-template-columns:1fr 1fr}}
-label{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:6px}
-label span{font-weight:normal;color:var(--mute);font-variant-numeric:tabular-nums}
-input[type=range]{width:100%;accent-color:var(--accent)}
-input[type=number]{width:110px;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
-.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-button{font:inherit;padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
-button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-button.primary{background:var(--accent);border-color:var(--accent);color:var(--onacc);font-weight:bold}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 18px;color:var(--mute)}
-.stats b{color:var(--ink);font-variant-numeric:tabular-nums}
-.warn{color:var(--clip);font-size:.9rem;margin:0 0 8px}
+
+:root{color-scheme:dark;--bg:#0d1310;--panel:#151e19;--panel2:#1b2720;--ink:#e8f2eb;--muted:#91a398;--line:#2b3a31;--accent:#55d6a2;--accent2:#b2f2d5;--red:#ff806b;--yellow:#f2c66d;--blue:#83b9ff}
+
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 20% -20%,#1b392b 0,transparent 42%),var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+
+button,input,select{font:inherit}button{cursor:pointer}
+
+.app{max-width:1180px;margin:auto;padding:26px 20px 50px}
+
+header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:22px}
+
+.brand{display:flex;gap:13px;align-items:center}.logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#73e5b5,#21875e);display:grid;place-items:center;color:#062315;font-size:23px;font-weight:900}
+
+h1{font-size:clamp(22px,3vw,30px);line-height:1.1;margin:0}.subtitle{color:var(--muted);font-size:13px;margin-top:5px}
+
+.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}.dot{width:8px;height:8px;border-radius:50%;background:#66766d}.dot.on{background:var(--accent);box-shadow:0 0 12px #55d6a277}
+
+.tabs{display:flex;gap:7px;overflow:auto;padding:5px 0 13px;margin-bottom:12px}
+
+.tab{white-space:nowrap;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:10px;padding:9px 14px}
+
+.tab.active{background:#20382c;border-color:#376c51;color:var(--accent2)}
+
+.page{display:none}.page.active{display:block}
+
+.panel{background:linear-gradient(180deg,#18221c,#141c17);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 12px 35px #0002}
+
+.panelhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.panel h2{font-size:16px;margin:0}.hint{color:var(--muted);font-size:12px}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+
+.field{min-width:0}.field label{display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:650;margin-bottom:7px}.value{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:500}
+
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+
+input[type=number],select{width:100%;background:#0e1511;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 10px;min-width:0}
+
+input[type=number]:focus,select:focus,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.rangefoot{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:2px}
+
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+.btn{border:1px solid var(--line);background:#202b24;color:var(--ink);padding:9px 14px;border-radius:10px}
+
+.btn:hover{border-color:#527461}.btn.primary{background:var(--accent);border-color:var(--accent);color:#062315;font-weight:750}.btn.danger{border-color:#78483f;color:#ff9c8b}.btn.small{padding:6px 10px;font-size:12px}
+
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+.wavebox{background:#0b110e;border:1px solid #26352c;border-radius:12px;padding:10px;position:relative}
+
+canvas{display:block;width:100%;height:220px}.wavebox canvas{height:230px}
+
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
+
+.metric{background:#101813;border:1px solid var(--line);border-radius:10px;padding:10px}.metric span{display:block;color:var(--muted);font-size:11px}.metric b{display:block;font-size:17px;margin-top:3px;font-variant-numeric:tabular-nums}
+
+.notice{padding:11px 13px;border-radius:10px;background:#292519;border:1px solid #55482b;color:#e8d49b;font-size:12px;margin-top:12px}
+
+.notice.red{background:#2a1c19;border-color:#694138;color:#ffb2a4}
+
+.wavebuttons{display:flex;flex-wrap:wrap;gap:7px}.wavebtn{border:1px solid var(--line);background:#101813;color:var(--muted);border-radius:9px;padding:8px 11px;font-size:12px}.wavebtn.active{border-color:var(--accent);color:var(--accent2);background:#1d3529}
+
+.inline{display:flex;align-items:center;gap:8px}.inline>*{flex:1}
+
+hr{border:0;border-top:1px solid var(--line);margin:17px 0}
+
+.drawtools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.drawtools label{font-size:12px;color:var(--muted)}
+
+#drawCanvas{height:310px;touch-action:none;cursor:crosshair}
+
+.smalltext{font-size:12px;color:var(--muted)}
+
+footer{color:#718278;font-size:11px;text-align:center;margin-top:20px}
+
+@media(max-width:700px){.app{padding:18px 12px 35px}.grid,.grid3{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:14px}header{align-items:flex-start}.status{display:none}}
+
 </style>
+
 </head>
+
 <body>
-<main>
-<h1>Clipping tone generator</h1>
-<p class="sub">Sine wave from 0 Hz to 25 kHz with adjustable clipping.</p>
 
-<div class="panel"><canvas id="scope" width="1400" height="440" aria-label="Waveform preview"></canvas></div>
+<div class="app">
 
-<div class="panel">
-<div class="row">
-<div>
-<label for="freq">Frequency <span id="freqVal"></span></label>
-<input id="freq" type="range" min="0" max="1000" step="1" value="300">
-<div style="margin-top:6px"><input id="freqNum" type="number" min="0" max="25000" step="1" value="45"> Hz</div>
-</div>
-<div>
-<label for="clip">Clipping level <span id="clipVal"></span></label>
-<input id="clip" type="range" min="0" max="100" step="0.1" value="2.3">
-<div style="margin-top:6px"><input id="target" type="number" min="0" max="43" step="0.1" value="1"> % THD</div>
-</div>
-<div>
-<label for="vol">Output volume <span id="volVal"></span></label>
-<input id="vol" type="range" min="0" max="100" step="1" value="10">
-</div>
-</div>
-<div class="btns">
-<button id="play" class="primary">Play</button>
-<button id="p0">0%</button><button id="p1">1%</button><button id="p3">3%</button><button id="p5">5%</button><button id="p10">10%</button><button id="p20">20%</button>
-</div>
+<header>
+
+ <div class="brand"><div class="logo">∿</div><div><h1>Audio Signal Workbench</h1><div class="subtitle">Waveform generation · clipping · spectrum analysis</div></div></div>
+
+ <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Audio engine stopped</span></div>
+
+</header>
+
+<nav class="tabs" aria-label="Workbench sections">
+
+ <button class="tab active" data-page="generator">Generator</button>
+
+ <button class="tab" data-page="custom">Custom waveform</button>
+
+ <button class="tab" data-page="clipping">Clipping &amp; THD</button>
+
+ <button class="tab" data-page="fft">FFT analyzer</button>
+
+ <button class="tab" data-page="scope">Oscilloscope</button>
+
+</nav>
+
+ 
+
+<section id="generator" class="page active">
+
+ <div class="panel">
+
+  <div class="panelhead"><h2>Waveform preview</h2><span class="hint" id="waveCaption">Sine · 45 Hz</span></div>
+
+  <div class="wavebox"><canvas id="preview" width="1400" height="460" aria-label="Generated waveform preview"></canvas></div>
+
+  <div class="metrics">
+
+   <div class="metric"><span>Frequency</span><b id="mFreq">45 Hz</b></div>
+
+   <div class="metric"><span>Period</span><b id="mPeriod">22.22 ms</b></div>
+
+   <div class="metric"><span>Peak amplitude</span><b id="mAmp">90%</b></div>
+
+   <div class="metric"><span>Sample rate</span><b id="mRate">Not started</b></div>
+
+  </div>
+
+ </div>
+
+ <div class="panel">
+
+  <div class="panelhead"><h2>Signal type</h2><span class="hint">Choose a waveform</span></div>
+
+  <div class="wavebuttons" id="waveButtons">
+
+   <button class="wavebtn active" data-wave="sine">Sine</button><button class="wavebtn" data-wave="square">Square</button>
+
+   <button class="wavebtn" data-wave="triangle">Triangle</button><button class="wavebtn" data-wave="sawtooth">Sawtooth</button>
+
+   <button class="wavebtn" data-wave="reverse">Reverse saw</button><button class="wavebtn" data-wave="pulse">Pulse</button>
+
+   <button class="wavebtn" data-wave="white">White noise</button><button class="wavebtn" data-wave="pink">Pink noise</button>
+
+   <button class="wavebtn" data-wave="brown">Brown noise</button><button class="wavebtn" data-wave="impulse">Impulse</button>
+
+   <button class="wavebtn" data-wave="dc">DC</button><button class="wavebtn" data-wave="custom">Custom</button>
+
+  </div>
+
+  <hr>
+
+  <div class="grid">
+
+   <div class="field"><label for="freq">Frequency <span class="value" id="freqText">45 Hz</span></label><input id="freq" type="range" min="0" max="25000" step="1" value="45"><div class="rangefoot"><span>0 Hz</span><span>25 kHz</span></div><input id="freqNum" type="number" min="0" max="25000" step="1" value="45" style="margin-top:8px"></div>
+
+   <div class="field"><label for="amp">Amplitude <span class="value" id="ampText">90%</span></label><input id="amp" type="range" min="0" max="100" step=".1" value="90"><div class="rangefoot"><span>0%</span><span>100%</span></div></div>
+
+   <div class="field"><label for="phase">Phase <span class="value" id="phaseText">0°</span></label><input id="phase" type="range" min="0" max="360" value="0"><div class="rangefoot"><span>0°</span><span>360°</span></div></div>
+
+   <div class="field"><label for="duty">Pulse duty cycle <span class="value" id="dutyText">50%</span></label><input id="duty" type="range" min="1" max="99" value="50"><div class="rangefoot"><span>1%</span><span>99%</span></div></div>
+
+  </div>
+
+  <div class="grid" style="margin-top:15px">
+
+   <div class="field"><label for="offset">DC offset <span class="value" id="offsetText">0%</span></label><input id="offset" type="range" min="-100" max="100" value="0"></div>
+
+   <div class="field"><label for="volume">Playback volume <span class="value" id="volumeText">10%</span></label><input id="volume" type="range" min="0" max="100" value="10"><div class="rangefoot"><span>Silent</span><span>Maximum</span></div></div>
+
+  </div>
+
+  <div class="btnrow"><button class="btn primary" id="playBtn">▶ Play</button><button class="btn" id="stopBtn">■ Stop</button><button class="btn" id="sweepBtn">↗ Start sweep</button><button class="btn" id="sweepStopBtn" disabled>Stop sweep</button></div>
+
+  <div class="notice red"><b>Safety:</b> Start at low volume. Very low-frequency tones can cause large speaker excursion; high-frequency tones can damage tweeters. Do not connect an amplifier's speaker output directly to a computer audio input.</div>
+
+ </div>
+
+ <div class="panel">
+
+  <div class="panelhead"><h2>Frequency sweep</h2><span class="hint">Continuous logarithmic or linear sweep</span></div>
+
+  <div class="grid3">
+
+   <div class="field"><label for="sweepStart">Start frequency (Hz)</label><input id="sweepStart" type="number" min="1" max="25000" value="20"></div>
+
+   <div class="field"><label for="sweepEnd">End frequency (Hz)</label><input id="sweepEnd" type="number" min="1" max="25000" value="200"></div>
+
+   <div class="field"><label for="sweepDuration">Duration (seconds)</label><input id="sweepDuration" type="number" min="1" max="300" value="20"></div>
+
+  </div>
+
+  <div class="grid" style="margin-top:12px">
+
+   <div class="field"><label for="sweepType">Sweep curve</label><select id="sweepType"><option value="log">Logarithmic</option><option value="linear">Linear</option></select></div>
+
+   <div class="field"><label for="sweepRepeat">Playback</label><select id="sweepRepeat"><option value="once">Play once</option><option value="loop">Loop continuously</option></select></div>
+
+  </div>
+
+ </div>
+
+</section>
+
+ 
+
+<section id="custom" class="page">
+
+ <div class="panel">
+
+  <div class="panelhead"><h2>Draw your own waveform</h2><span class="hint">One cycle repeats continuously</span></div>
+
+  <div class="wavebox"><canvas id="drawCanvas" width="1400" height="620" aria-label="Draw a custom waveform"></canvas></div>
+
+  <div class="drawtools" style="margin-top:12px">
+
+   <button class="btn small" id="drawClear">Clear</button><button class="btn small" id="drawSine">Load sine</button>
+
+   <button class="btn small" id="drawTriangle">Load triangle</button><button class="btn small" id="drawSquare">Load square</button>
+
+   <label><input type="checkbox" id="drawSmooth" checked> Smooth interpolation</label>
+
+   <button class="btn primary" id="useCustom">Use this waveform</button>
+
+  </div>
+
+  <p class="smalltext">Draw from left to right. The horizontal axis is time through one cycle; the vertical axis is amplitude. The editor joins the right edge back to the left edge when played.</p>
+
+ </div>
+
+</section>
+
+ 
+
+<section id="clipping" class="page">
+
+ <div class="panel">
+
+  <div class="panelhead"><h2>Clipping laboratory</h2><span class="hint">Applies nonlinear clipping to the generated signal</span></div>
+
+  <div class="wavebox"><canvas id="clipPreview" width="1400" height="460"></canvas></div>
+
+  <div class="grid" style="margin-top:16px">
+
+   <div class="field"><label for="clipMode">Clipping mode</label><select id="clipMode"><option value="hard">Hard clipping</option><option value="soft">Soft saturation</option><option value="asym">Asymmetrical clipping</option></select></div>
+
+   <div class="field"><label for="clipAmount">Clip threshold <span class="value" id="clipText">70%</span></label><input id="clipAmount" type="range" min="5" max="100" value="70"></div>
+
+   <div class="field"><label for="positiveClip">Positive threshold <span class="value" id="posText">70%</span></label><input id="positiveClip" type="range" min="5" max="100" value="70"></div>
+
+   <div class="field"><label for="negativeClip">Negative threshold <span class="value" id="negText">70%</span></label><input id="negativeClip" type="range" min="5" max="100" value="70"></div>
+
+  </div>
+
+  <div class="metrics">
+
+   <div class="metric"><span>Calculated THD</span><b id="thdValue">0.0%</b></div>
+
+   <div class="metric"><span>Clip threshold</span><b id="thresholdValue">70%</b></div>
+
+   <div class="metric"><span>3rd harmonic</span><b id="h3Value">—</b></div>
+
+   <div class="metric"><span>5th harmonic</span><b id="h5Value">—</b></div>
+
+  </div>
+
+  <p class="smalltext">THD is calculated from the ideal mathematical waveform, not measured from a physical amplifier. It is most meaningful for periodic tones such as sine waves.</p>
+
+ </div>
+
+</section>
+
+ 
+
+<section id="fft" class="page">
+
+ <div class="panel">
+
+  <div class="panelhead"><h2>FFT spectrum analyzer</h2><span class="hint">Live analysis of generated output or microphone input</span></div>
+
+  <div class="wavebox"><canvas id="fftCanvas" width="1400" height="500"></canvas></div>
+
+  <div class="grid" style="margin-top:14px">
+
+   <div class="field"><label for="fftScale">Frequency scale</label><select id="fftScale"><option value="log">Logarithmic</option><option value="linear">Linear</option></select></div>
+
+   <div class="field"><label for="fftRange">Display range</label><select id="fftRange"><option value="full">0 – Nyquist</option><option value="20k">20 Hz – 20 kHz</option><option value="500">0 – 500 Hz</option><option value="2000">0 – 2 kHz</option></select></div>
+
+  </div>
+
+  <div class="metrics"><div class="metric"><span>Peak frequency</span><b id="fftPeak">—</b></div><div class="metric"><span>Peak level</span><b id="fftLevel">—</b></div><div class="metric"><span>FFT size</span><b>8192</b></div><div class="metric"><span>Sample rate</span><b id="fftRate">—</b></div></div>
+
+ </div>
+
+</section>
+
+ 
+
+<section id="scope" class="page">
+
+ <div class="panel">
+
+  <div class="panelhead"><h2>Oscilloscope</h2><span class="hint">Generated signal or optional microphone input</span></div>
+
+  <div class="wavebox"><canvas id="scopeCanvas" width="1400" height="500"></canvas></div>
+
+  <div class="grid" style="margin-top:14px">
+
+   <div class="field"><label for="scopeSource">Input source</label><select id="scopeSource"><option value="generated">Generated signal</option><option value="mic">Microphone / line input</option></select></div>
+
+   <div class="field"><label for="timebase">Timebase</label><select id="timebase"><option value="auto">Auto</option><option value="1">1 ms/div</option><option value="5">5 ms/div</option><option value="10">10 ms/div</option><option value="20">20 ms/div</option><option value="50">50 ms/div</option><option value="100">100 ms/div</option></select></div>
+
+  </div>
+
+  <div class="btnrow"><button class="btn" id="micBtn">Enable microphone input</button><button class="btn" id="micOffBtn" disabled>Disconnect input</button></div>
+
+  <div class="metrics"><div class="metric"><span>Peak-to-peak</span><b id="scopePP">—</b></div><div class="metric"><span>RMS (digital)</span><b id="scopeRms">—</b></div><div class="metric"><span>Frequency estimate</span><b id="scopeFreq">—</b></div><div class="metric"><span>Input</span><b id="scopeState">Generated</b></div></div>
+
+  <div class="notice">Microphone readings are digital relative levels, not calibrated volts. For amplifier measurements, use a properly rated isolated attenuator or measurement interface. Never connect speaker-level outputs directly to a laptop input.</div>
+
+ </div>
+
+</section>
+
+ 
+
+<footer>Audio Signal Workbench · Browser-based signal generation and visualization · No WAV export or hardware voltage measurement</footer>
+
 </div>
 
-<div class="panel stats">
-<div>Clip point: <b id="thr">-</b></div>
-<div>Measured THD: <b id="thd">-</b></div>
-<div>Period: <b id="per">-</b></div>
-<div>Sample rate: <b id="sr">-</b></div>
-<div style="grid-column:1/-1">3rd / 5th / 7th harmonic: <b id="harm">-</b></div>
-</div>
-<p class="warn" id="warn"></p>
-<p class="warn">Start with the volume low. Very high frequencies at loud volume can hurt your ears and tweeters, and clipped bass heats up voice coils.</p>
-</main>
+ 
+
 <script>
-(function(){
-var $=function(i){return document.getElementById(i)};
-var f=$('freq'),fn=$('freqNum'),c=$('clip'),v=$('vol'),t=$('target'),play=$('play'),cv=$('scope'),ctx=cv.getContext('2d');
-var ac=null,osc=null,shaper=null,gain=null,playing=false,hz=45;
 
-function clipFn(x,L){return Math.max(-L,Math.min(L,x))/L}
-function thd(L){
- var M=1024,i,k,a,b,fund=0,sum=0,s=[];
- for(i=0;i<M;i++)s.push(clipFn(Math.sin(2*Math.PI*i/M),L));
- for(k=1;k<=15;k++){a=0;b=0;for(i=0;i<M;i++){a+=s[i]*Math.cos(2*Math.PI*k*i/M);b+=s[i]*Math.sin(2*Math.PI*k*i/M)}
-  var m=Math.sqrt(a*a+b*b)*2/M;if(k==1)fund=m;else sum+=m*m}
- return 100*Math.sqrt(sum)/fund;
-}
-var table=[];for(var p=0;p<=1000;p++){var L=1-0.9*p/1000;table.push({L:L,d:thd(L)})}
-function levelForThd(d){for(var i=0;i<table.length;i++){if(table[i].d>=d)return table[i].L}return 0.1}
-var curL=1,curD=0;
+(()=> {
 
-// log slider: 0 -> 0 Hz, 1..1000 -> 1 Hz..25 kHz
-function sliderToHz(s){s=+s;return s<=0?0:Math.round(Math.pow(25000,(s-1)/999))}
-function hzToSlider(h){return h<=0?0:Math.round(1+999*Math.log(Math.max(h,1))/Math.log(25000))}
-function fmtHz(h){return h>=1000?(h/1000).toFixed(h>=10000?1:2)+' kHz':h+' Hz'}
-function fmtPeriod(h){if(h<=0)return 'DC (no wave)';var p=1/h;return p>=0.001?(p*1000).toFixed(2)+' ms':(p*1e6).toFixed(1)+' µs'}
+'use strict';
 
-function makeCurve(L){
- var n=4096,arr=new Float32Array(n);
- for(var i=0;i<n;i++){arr[i]=clipFn(i*2/(n-1)-1,L)}
- return arr;
-}
-function update(src){
- var d;
- if(src==='fnum'){hz=Math.max(0,Math.min(25000,parseFloat(fn.value)||0));f.value=hzToSlider(hz)}
- else if(src==='freq'){hz=sliderToHz(f.value);fn.value=hz}
- if(src==='target'){d=Math.max(0,Math.min(43,parseFloat(t.value)||0));c.value=d/43*100}
- else if(src==='clip'){d=c.value/100*43;t.value=d.toFixed(1)}
- else d=parseFloat(t.value)||0;
- curD=d;curL=d<=0?1:levelForThd(d);
- var sr=ac?ac.sampleRate:48000,ny=sr/2;
- $('freqVal').textContent=fmtHz(hz);
- $('clipVal').textContent=curD.toFixed(1)+'% THD';
- $('volVal').textContent=v.value+'%';
- $('thr').textContent=Math.round(curL*100)+'% of peak';
- $('thd').textContent=thd(curL).toFixed(1)+'%';
- $('per').textContent=fmtPeriod(hz);
- $('sr').textContent=ac?(sr/1000)+' kHz (limit '+(ny/1000)+' kHz)':'set on Play';
- function h(n){var x=hz*n;return x>ny?'<span style="color:var(--clip)">'+Math.round(x)+' (lost)</span>':Math.round(x)}
- $('harm').innerHTML=hz?h(3)+' / '+h(5)+' / '+h(7)+' Hz':'-';
- var w='';
- if(hz>ny)w='This frequency is above what your audio output can play ('+(ny/1000)+' kHz limit), so it will be silent or folded down.';
- else if(hz>0&&hz<20)w='Below about 20 Hz is infrasonic: you will feel it more than hear it, and laptop speakers will not play it.';
- else if(hz>20000)w='Above about 20 kHz most people hear nothing, but your speakers and tweeters still receive the signal.';
- $('warn').textContent=w;
- if(osc)osc.frequency.value=hz;
- if(gain)gain.gain.value=Math.pow(v.value/100,2)*0.9;
- if(shaper)shaper.curve=makeCurve(curL);
- draw();
-}
-function draw(){
- var W=cv.width,H=cv.height,cs=getComputedStyle(document.documentElement);
- ctx.clearRect(0,0,W,H);
- ctx.strokeStyle=cs.getPropertyValue('--line');ctx.lineWidth=2;
- ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
- var amp=H*0.42,x,y,cycles=2;
- ctx.setLineDash([8,8]);ctx.strokeStyle=cs.getPropertyValue('--clip');ctx.lineWidth=1.5;
- [curL,-curL].forEach(function(l){ctx.beginPath();ctx.moveTo(0,H/2-l*amp);ctx.lineTo(W,H/2-l*amp);ctx.stroke()});
- ctx.setLineDash([]);
- if(hz<=0){return}
- ctx.strokeStyle=cs.getPropertyValue('--line');ctx.lineWidth=2;ctx.beginPath();
- for(x=0;x<=W;x++){y=Math.sin(2*Math.PI*cycles*x/W);x?ctx.lineTo(x,H/2-y*amp):ctx.moveTo(x,H/2-y*amp)}ctx.stroke();
- ctx.strokeStyle=cs.getPropertyValue('--wave');ctx.lineWidth=3.5;ctx.beginPath();
- for(x=0;x<=W;x++){y=Math.max(-curL,Math.min(curL,Math.sin(2*Math.PI*cycles*x/W)));x?ctx.lineTo(x,H/2-y*amp):ctx.moveTo(x,H/2-y*amp)}ctx.stroke();
- ctx.fillStyle=cs.getPropertyValue('--mute');ctx.font='22px sans-serif';
- ctx.fillText('2 cycles = '+(hz?(2/hz>=0.001?(2000/hz).toFixed(2)+' ms':(2e6/hz).toFixed(1)+' µs'):''),12,28);
-}
-function start(){
- if(!ac){
-  try{ac=new (window.AudioContext||window.webkitAudioContext)({sampleRate:96000})}
-  catch(e){ac=new (window.AudioContext||window.webkitAudioContext)()}
+const $=id=>document.getElementById(id);
+
+const state={ctx:null,osc:null,source:null,gain:null,shaper:null,analyser:null,playing:false,sweepTimer:null,micStream:null,micSource:null,activeWave:'sine',custom:new Float32Array(2048),customReady:false,drawPoints:[],raf:0};
+
+const audioSupported=!!(window.AudioContext||window.webkitAudioContext);
+
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+const freq=() => +$('freqNum').value||0;
+
+const amp=()=>+$('amp').value/100;
+
+const phase=()=>+$('phase').value*Math.PI/180;
+
+const volume=()=>Math.pow(+$('volume').value/100,2)*0.9;
+
+const sr=()=>state.ctx?.sampleRate||48000;
+
+function fmtHz(x){return x>=1000?(x/1000).toFixed(x>=10000?1:2)+' kHz':x.toFixed(0)+' Hz'}
+
+function period(x){if(!x)return 'DC';let p=1/x;return p>=.001?(p*1000).toFixed(2)+' ms':(p*1e6).toFixed(1)+' µs'}
+
+function ensureAudio(){if(!audioSupported)throw Error('Web Audio is not supported in this browser.');if(!state.ctx)state.ctx=new (window.AudioContext||window.webkitAudioContext)();if(state.ctx.state==='suspended')state.ctx.resume();return state.ctx}
+
+function setStatus(on){$('statusDot').classList.toggle('on',on);$('statusText').textContent=on?'Audio engine running':'Audio engine stopped';$('mRate').textContent=state.ctx?(sr()/1000).toFixed(1)+' kHz':'Not started';$('fftRate').textContent=state.ctx?(sr()/1000).toFixed(1)+' kHz':'—'}
+
+function waveValue(type,p,duty=.5){
+
+ p=((p%1)+1)%1;
+
+ switch(type){
+
+  case 'sine':return Math.sin(2*Math.PI*p);
+
+  case 'square':return p<.5?1:-1;
+
+  case 'triangle':return 1-4*Math.abs(p-.5);
+
+  case 'sawtooth':return 2*p-1;
+
+  case 'reverse':return 1-2*p;
+
+  case 'pulse':return p<duty?1:-1;
+
+  case 'impulse':return p<.025?1:-.025641;
+
+  case 'custom':return customAt(p);
+
+  default:return 0;
+
  }
- if(ac.state==='suspended')ac.resume();
- osc=ac.createOscillator();osc.type='sine';osc.frequency.value=hz;
- shaper=ac.createWaveShaper();shaper.curve=makeCurve(curL);shaper.oversample='4x';
- gain=ac.createGain();gain.gain.value=0;
- osc.connect(shaper);shaper.connect(gain);gain.connect(ac.destination);
- osc.start();
- gain.gain.setTargetAtTime(Math.pow(v.value/100,2)*0.9,ac.currentTime,0.05);
- playing=true;play.textContent='Stop';update();
+
 }
-function stop(){
- if(!osc)return;
- var o=osc,g=gain;g.gain.setTargetAtTime(0,ac.currentTime,0.03);
- setTimeout(function(){try{o.stop();o.disconnect()}catch(e){}},150);
- osc=null;shaper=null;gain=null;playing=false;play.textContent='Play';
+
+function customAt(p){let n=state.custom.length,x=p*n,i=Math.floor(x),f=x-i;let a=state.custom[i%n],b=state.custom[(i+1)%n];if($('drawSmooth').checked){let c=state.custom[(i+n-1)%n],d=state.custom[(i+2)%n];let f2=f*f,f3=f2*f;return .5*((2*a)+(-c+b)*f+(2*c-5*a+4*b-d)*f2+(-c+3*a-3*b+d)*f3)}return a+(b-a)*f}
+
+function makePeriodic(type){let n=2048,harmonics=128,real=new Float32Array(harmonics+1),imag=new Float32Array(harmonics+1),duty=+$('duty').value/100,ph=phase();for(let k=1;k<=harmonics;k++){let re=0,im=0;for(let i=0;i<n;i++){let v=waveValue(type,i/n+ph/(2*Math.PI),duty),a=2*Math.PI*k*i/n;re+=v*Math.cos(a);im+=v*Math.sin(a)}real[k]=2*re/n;imag[k]=2*im/n}return state.ctx.createPeriodicWave(real,imag,{disableNormalization:false})}
+
+function makeClipCurve(){let n=2048,curve=new Float32Array(n),mode=$('clipMode').value,common=+$('clipAmount').value/100,pos=+$('positiveClip').value/100,neg=+$('negativeClip').value/100;for(let i=0;i<n;i++){let x=i*2/(n-1)-1,y=x;if(mode==='hard')y=clamp(x,-(mode==='asym'?neg:common),mode==='asym'?pos:common);else if(mode==='soft'){let lim=common;y=Math.tanh(x/lim)*lim;}else y=clamp(x,-neg,pos);curve[i]=y;}return curve}
+
+function noiseBuffer(type){let ctx=state.ctx,len=ctx.sampleRate*2,b=ctx.createBuffer(1,len,ctx.sampleRate),d=b.getChannelData(0),last=0,pink=[0,0,0,0,0,0,0];for(let i=0;i<len;i++){let w=Math.random()*2-1;if(type==='white')d[i]=w;else if(type==='brown'){last=(last+.02*w)/1.02;d[i]=last*3.5;}else{pink[0]=.99886*pink[0]+w*.0555179;pink[1]=.99332*pink[1]+w*.0750759;pink[2]=.96900*pink[2]+w*.1538520;pink[3]=.86650*pink[3]+w*.3104856;pink[4]=.55*pink[4]+w*.5329522;pink[5]=-.7616*pink[5]-w*.0168980;let p=pink.reduce((a,v)=>a+v,0)+w*.5362;d[i]=p*.11;pink[6]=w*.115926;}}return b}
+
+function stop(){if(state.sweepTimer){clearInterval(state.sweepTimer);state.sweepTimer=null}if(state.source){try{state.source.stop()}catch(e){}try{state.source.disconnect()}catch(e){}state.source=null}if(state.gain){try{state.gain.gain.setTargetAtTime(0,state.ctx.currentTime,.015)}catch(e){}try{state.gain.disconnect()}catch(e){}state.gain=null}if(state.osc){try{state.osc.stop()}catch(e){}try{state.osc.disconnect()}catch(e){}state.osc=null}if(state.shaper){try{state.shaper.disconnect()}catch(e){}state.shaper=null}state.playing=false;$('playBtn').textContent='▶ Play';$('sweepBtn').disabled=false;$('sweepStopBtn').disabled=true;setStatus(false)}
+
+function buildSignal(){let ctx=ensureAudio();stop();let type=state.activeWave,src;
+
+ if(['white','pink','brown'].includes(type)){src=ctx.createBufferSource();src.buffer=noiseBuffer(type);src.loop=true}
+
+ else if(type==='dc'){src=ctx.createConstantSource();src.offset.value=(+$('offset').value/100)+amp()}
+
+ else{src=ctx.createOscillator();src.frequency.value=Math.max(0,freq());src.setPeriodicWave(makePeriodic(type));src.detune.value=0}
+
+ let sh=ctx.createWaveShaper();sh.curve=makeClipCurve();sh.oversample='4x';
+
+ let g=ctx.createGain();g.gain.value=volume();
+
+ src.connect(sh);sh.connect(g);g.connect(ctx.destination);
+
+ let analyser=ctx.createAnalyser();analyser.fftSize=8192;analyser.smoothingTimeConstant=.15;g.connect(analyser);
+
+ state.source=src;state.osc=src instanceof OscillatorNode?src:null;state.shaper=sh;state.gain=g;state.analyser=analyser;src.start();state.playing=true;
+
+ $('playBtn').textContent='Ⅱ Pause';setStatus(true);drawMetrics();startVisuals();
+
 }
-play.addEventListener('click',function(){playing?stop():start()});
-f.addEventListener('input',function(){update('freq')});
-fn.addEventListener('input',function(){update('fnum')});
-c.addEventListener('input',function(){update('clip')});
-t.addEventListener('input',function(){update('target')});
-v.addEventListener('input',function(){update()});
-[['p0',0],['p1',1],['p3',3],['p5',5],['p10',10],['p20',20]].forEach(function(p){
- $(p[0]).addEventListener('click',function(){t.value=p[1];update('target')});
-});
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
-f.value=hzToSlider(45);update('target');
+
+function updateLive(){if(!state.playing)return;let ctx=state.ctx;if(state.osc){state.osc.frequency.setTargetAtTime(Math.max(0,freq()),ctx.currentTime,.01);state.osc.setPeriodicWave(makePeriodic(state.activeWave));}if(state.source instanceof ConstantSourceNode)state.source.offset.setTargetAtTime(+$('offset').value/100+amp(),ctx.currentTime,.01);if(state.gain)state.gain.gain.setTargetAtTime(volume(),ctx.currentTime,.02);if(state.shaper)state.shaper.curve=makeClipCurve();drawMetrics()}
+
+function selectWave(type){state.activeWave=type;document.querySelectorAll('.wavebtn').forEach(b=>b.classList.toggle('active',b.dataset.wave===type));$('waveCaption').textContent=type[0].toUpperCase()+type.slice(1)+' · '+fmtHz(freq());if(type==='custom'&&!state.customReady){loadDraw('sine')}drawPreview();if(state.playing)buildSignal()}
+
+function drawGrid(ctx,w,h){ctx.clearRect(0,0,w,h);ctx.strokeStyle='#26362d';ctx.lineWidth=1;for(let i=0;i<=10;i++){let x=i*w/10;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let i=0;i<=8;i++){let y=i*h/8;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}ctx.strokeStyle='#62766a';ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke()}
+
+function plotWave(canvas,type,clip=false){let c=canvas.getContext('2d'),w=canvas.width,h=canvas.height;drawGrid(c,w,h);let n=w,ampPx=h*.39,ph=phase(),duty=+$('duty').value/100,threshold=+$('clipAmount').value/100;c.lineWidth=3;c.strokeStyle='#55d6a2';c.beginPath();for(let x=0;x<n;x++){let y=waveValue(type,x/n*2+ph/(2*Math.PI),duty);y*=amp();y+=+$('offset').value/100;if(clip){let mode=$('clipMode').value;if(mode==='soft')y=Math.tanh(y/threshold)*threshold;else y=clamp(y,-(mode==='asym'?+$('negativeClip').value/100:threshold),mode==='asym'?+$('positiveClip').value/100:threshold)}let py=h/2-y*ampPx;if(x===0)c.moveTo(x,py);else c.lineTo(x,py)}c.stroke();c.fillStyle='#91a398';c.font='20px system-ui';c.fillText('2 cycles',14,25)}
+
+function drawPreview(){plotWave($('preview'),state.activeWave);plotWave($('clipPreview'),state.activeWave,true)}
+
+function drawMetrics(){$('freqText').textContent=fmtHz(freq());$('ampText').textContent=(amp()*100).toFixed(1)+'%';$('phaseText').textContent=$('phase').value+'°';$('dutyText').textContent=$('duty').value+'%';$('offsetText').textContent=$('offset').value+'%';$('volumeText').textContent=$('volume').value+'%';$('mFreq').textContent=fmtHz(freq());$('mPeriod').textContent=period(freq());$('mAmp').textContent=(amp()*100).toFixed(1)+'%';$('waveCaption').textContent=state.activeWave[0].toUpperCase()+state.activeWave.slice(1)+' · '+fmtHz(freq());drawPreview();updateTHD()}
+
+function startVisuals(){if(state.raf)cancelAnimationFrame(state.raf);const loop=()=>{if(state.analyser){drawFFT();if($('scopeSource').value==='generated')drawScope(state.analyser)}state.raf=requestAnimationFrame(loop)};loop()}
+
+function drawFFT(){let a=state.analyser;if(!a)return;let c=$('fftCanvas').getContext('2d'),w=$('fftCanvas').width,h=$('fftCanvas').height;drawGrid(c,w,h);let bins=new Uint8Array(a.frequencyBinCount);a.getByteFrequencyData(bins);let ny=sr()/2,range=$('fftRange').value==='500'?500:$('fftRange').value==='2000'?2000:$('fftRange').value==='20k'?20000:ny;range=Math.min(range,ny);let log=$('fftScale').value==='log';c.strokeStyle='#83b9ff';c.lineWidth=2;c.beginPath();let peak=-1,peakBin=0;for(let x=0;x<w;x++){let f=log?20*Math.pow(range/20,x/w):x/w*range;let bin=Math.min(bins.length-1,Math.round(f/ny*bins.length));let db=(bins[bin]/255)*h*.82;let y=h-db;if(bins[bin]>peak){peak=bins[bin];peakBin=bin}if(x===0)c.moveTo(x,y);else c.lineTo(x,y)}c.stroke();let pf=peakBin*sr()/a.fftSize;$('fftPeak').textContent=pf?fmtHz(pf):'—';$('fftLevel').textContent=peak>=0?(20*Math.log10(Math.max(peak/255,.00001))).toFixed(1)+' dBFS':'—'}
+
+function drawScope(analyser){let c=$('scopeCanvas').getContext('2d'),w=$('scopeCanvas').width,h=$('scopeCanvas').height;drawGrid(c,w,h);let data=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(data);let pp=0,sum=0,min=1,max=-1;for(let v of data){min=Math.min(min,v);max=Math.max(max,v);sum+=v*v}pp=max-min;$('scopePP').textContent=pp.toFixed(3)+' FS';$('scopeRms').textContent=Math.sqrt(sum/data.length).toFixed(3)+' FS';let crossings=0;for(let i=1;i<data.length;i++)if(data[i-1]<0&&data[i]>=0)crossings++;let est=crossings*sr()/data.length;$('scopeFreq').textContent=est?fmtHz(est):'—';$('scopeState').textContent='Generated';let ms=+$('timebase').value||null;let samples=ms?Math.min(data.length,Math.floor(sr()*ms/1000*10)):data.length;let step=data.length/samples;c.strokeStyle='#55d6a2';c.lineWidth=3;c.beginPath();for(let x=0;x<w;x++){let i=Math.min(data.length-1,Math.floor(x/w*samples*step)),y=h/2-data[i]*h*.4;if(x===0)c.moveTo(x,y);else c.lineTo(x,y)}c.stroke()}
+
+function updateTHD(){let type=state.activeWave;if(type!=='sine'){ $('thdValue').textContent='Sine only';$('h3Value').textContent='—';$('h5Value').textContent='—';return}let N=8192,arr=new Float64Array(N),thr=+$('clipAmount').value/100,mode=$('clipMode').value,pos=+$('positiveClip').value/100,neg=+$('negativeClip').value;for(let i=0;i<N;i++){let x=Math.sin(2*Math.PI*i/N);if(mode==='soft')x=Math.tanh(x/thr)*thr;else x=clamp(x,-(mode==='asym'?neg:thr),mode==='asym'?pos:thr);arr[i]=x}let mags=[];for(let k=1;k<=15;k++){let re=0,im=0;for(let i=0;i<N;i++){let a=2*Math.PI*k*i/N;re+=arr[i]*Math.cos(a);im-=arr[i]*Math.sin(a)}mags[k]=2*Math.hypot(re,im)/N}let fund=mags[1]||1,sum=0;for(let k=2;k<=15;k++)sum+=mags[k]*mags[k];$('thdValue').textContent=(100*Math.sqrt(sum)/fund).toFixed(2)+'%';$('h3Value').textContent=(100*mags[3]/fund).toFixed(2)+'%';$('h5Value').textContent=(100*mags[5]/fund).toFixed(2)+'%';$('thresholdValue').textContent=(thr*100).toFixed(0)+'%';$('clipText').textContent=(thr*100).toFixed(0)+'%';$('posText').textContent=$('positiveClip').value+'%';$('negText').textContent=$('negativeClip').value+'%'}
+
+function sweep(){let ctx=ensureAudio(),start=clamp(+$('sweepStart').value||20,1,25000),end=clamp(+$('sweepEnd').value||200,1,25000),dur=clamp(+$('sweepDuration').value||20,1,300);if(!state.playing||!state.osc){state.activeWave='sine';selectWave('sine');buildSignal()}let o=state.osc;if(!o)return;let now=ctx.currentTime;o.frequency.cancelScheduledValues(now);o.frequency.setValueAtTime(start,now);if($('sweepType').value==='log')o.frequency.exponentialRampToValueAtTime(end,now+dur);else o.frequency.linearRampToValueAtTime(end,now+dur);$('sweepBtn').disabled=true;$('sweepStopBtn').disabled=false;let began=performance.now();if(state.sweepTimer)clearInterval(state.sweepTimer);state.sweepTimer=setInterval(()=>{let elapsed=(performance.now()-began)/1000;if(elapsed>=dur){if($('sweepRepeat').value==='loop'){began=performance.now();let n=ctx.currentTime;o.frequency.cancelScheduledValues(n);o.frequency.setValueAtTime(start,n);if($('sweepType').value==='log')o.frequency.exponentialRampToValueAtTime(end,n+dur);else o.frequency.linearRampToValueAtTime(end,n+dur)}else stopSweep()}},100)}
+
+function stopSweep(){if(state.sweepTimer)clearInterval(state.sweepTimer);state.sweepTimer=null;$('sweepBtn').disabled=false;$('sweepStopBtn').disabled=true;if(state.osc)state.osc.frequency.setTargetAtTime(freq(),state.ctx.currentTime,.02)}
+
+function loadDraw(type){let n=2048;state.custom=new Float32Array(n);for(let i=0;i<n;i++)state.custom[i]=waveValue(type,i/n);state.customReady=true;drawEditor()}
+
+function drawEditor(){let c=$('drawCanvas').getContext('2d'),w=$('drawCanvas').width,h=$('drawCanvas').height;drawGrid(c,w,h);c.strokeStyle='#55d6a2';c.lineWidth=4;c.beginPath();for(let x=0;x<w;x++){let y=state.custom[Math.floor(x/w*state.custom.length)];let py=h/2-y*h*.42;if(x===0)c.moveTo(x,py);else c.lineTo(x,py)}c.stroke()}
+
+let drawing=false;
+
+function canvasPoint(e){let r=$('drawCanvas').getBoundingClientRect(),x=clamp((e.clientX-r.left)/r.width,0,1),y=clamp(1-2*(e.clientY-r.top)/r.height,-1,1);return {x,y}}
+
+$('drawCanvas').addEventListener('pointerdown',e=>{drawing=true;$('drawCanvas').setPointerCapture(e.pointerId);paintPoint(e)});
+
+$('drawCanvas').addEventListener('pointermove',e=>{if(drawing)paintPoint(e)});
+
+$('drawCanvas').addEventListener('pointerup',()=>drawing=false);$('drawCanvas').addEventListener('pointercancel',()=>drawing=false);
+
+function paintPoint(e){let p=canvasPoint(e),n=state.custom.length,index=Math.floor(p.x*(n-1));let old=state.custom[index];state.custom[index]=p.y;let prev=state.drawPoints[state.drawPoints.length-1];if(prev){let a=Math.floor(prev.x*(n-1)),b=index;if(a!==b){let lo=Math.min(a,b),hi=Math.max(a,b);for(let i=lo;i<=hi;i++){let t=(i-a)/(b-a);state.custom[i]=prev.y+(p.y-prev.y)*t}}}state.drawPoints.push(p);if(state.drawPoints.length>2)state.drawPoints.shift();state.customReady=true;drawEditor()}
+
+$('drawClear').onclick=()=>{state.custom.fill(0);state.drawPoints=[];state.customReady=true;drawEditor()};
+
+$('drawSine').onclick=()=>{state.drawPoints=[];loadDraw('sine')};$('drawTriangle').onclick=()=>{state.drawPoints=[];loadDraw('triangle')};$('drawSquare').onclick=()=>{state.drawPoints=[];loadDraw('square')};
+
+$('useCustom').onclick=()=>{state.drawPoints=[];selectWave('custom');document.querySelector('[data-page="generator"]').click()};
+
+async function enableMic(){try{ensureAudio();state.micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});state.micSource=state.ctx.createMediaStreamSource(state.micStream);let an=state.ctx.createAnalyser();an.fftSize=8192;state.micSource.connect(an);state.micAnalyser=an;$('micBtn').disabled=true;$('micOffBtn').disabled=false;$('scopeState').textContent='Microphone';$('scopeSource').value='mic';}catch(e){alert('Microphone access failed: '+e.message)}}
+
+function disableMic(){if(state.micStream)state.micStream.getTracks().forEach(t=>t.stop());if(state.micSource)state.micSource.disconnect();state.micStream=null;state.micSource=null;state.micAnalyser=null;$('micBtn').disabled=false;$('micOffBtn').disabled=true;$('scopeSource').value='generated';$('scopeState').textContent='Generated'}
+
+function drawMicScope(){let a=state.micAnalyser;if(!a)return;let c=$('scopeCanvas').getContext('2d'),w=$('scopeCanvas').width,h=$('scopeCanvas').height;drawGrid(c,w,h);let data=new Float32Array(a.fftSize);a.getFloatTimeDomainData(data);let min=1,max=-1,sum=0;for(let v of data){min=Math.min(min,v);max=Math.max(max,v);sum+=v*v} $('scopePP').textContent=(max-min).toFixed(3)+' FS';$('scopeRms').textContent=Math.sqrt(sum/data.length).toFixed(3)+' FS';$('scopeFreq').textContent='—';$('scopeState').textContent='Microphone';c.strokeStyle='#83b9ff';c.lineWidth=3;c.beginPath();for(let x=0;x<w;x++){let i=Math.floor(x/w*data.length),y=h/2-data[i]*h*.4;if(x===0)c.moveTo(x,y);else c.lineTo(x,y)}c.stroke()}
+
+const oldLoop=startVisuals; // replace visualization loop to support mic source
+
+function nav(page){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.page===page));document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));if(page==='custom')drawEditor();if(page==='fft'||page==='scope')startVisuals()}
+
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>nav(b.dataset.page)));
+
+document.querySelectorAll('.wavebtn').forEach(b=>b.addEventListener('click',()=>selectWave(b.dataset.wave)));
+
+$('playBtn').onclick=()=>{if(state.playing){stop()}else{try{buildSignal()}catch(e){alert(e.message)}}};
+
+$('stopBtn').onclick=stop;$('sweepBtn').onclick=()=>{try{sweep()}catch(e){alert(e.message)}};$('sweepStopBtn').onclick=stopSweep;
+
+['freq','freqNum','amp','phase','duty','offset','volume','clipAmount','positiveClip','negativeClip','clipMode'].forEach(id=>$(id).addEventListener('input',()=>{if(id==='freq')$('freqNum').value=$('freq').value;if(id==='freqNum')$('freq').value=clamp(+$('freqNum').value,0,25000);drawMetrics();if(state.playing)updateLive()}));
+
+$('clipMode').addEventListener('change',()=>{drawMetrics();if(state.playing)updateLive()});
+
+$('fftScale').onchange=()=>{};$('fftRange').onchange=()=>{};$('micBtn').onclick=enableMic;$('micOffBtn').onclick=disableMic;
+
+$('scopeSource').onchange=()=>{if($('scopeSource').value==='mic'&&!state.micAnalyser){$('scopeSource').value='generated';alert('Enable microphone input first.')}};
+
+const baseStartVisuals=startVisuals;
+
+function visualLoop(){if(state.analyser)drawFFT();if($('scopeSource').value==='mic'&&state.micAnalyser)drawMicScope();else if(state.analyser)drawScope(state.analyser);state.raf=requestAnimationFrame(visualLoop)}
+
+// Use a single animation loop.
+
+function restartLoop(){if(state.raf)cancelAnimationFrame(state.raf);const tick=()=>{if(state.analyser)drawFFT();if($('scopeSource').value==='mic'&&state.micAnalyser)drawMicScope();else if(state.analyser)drawScope(state.analyser);state.raf=requestAnimationFrame(tick)};tick()}
+
+const originalBuild=buildSignal;
+
+// Override the signal builder's visual starter through a small wrapper.
+
+const playOriginal=$('playBtn').onclick;
+
+$('playBtn').onclick=()=>{playOriginal();restartLoop()};
+
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',restartLoop));
+
+$('freq').value=45;drawMetrics();loadDraw('sine');drawPreview();plotWave($('clipPreview'),'sine',true);setStatus(false);
+
 })();
+
 </script>
+
 </body>
+
 </html>
